@@ -17,6 +17,74 @@ const qwenKey = ref('');
 const ollamaUrl = ref('http://localhost:11434/v1');
 const alphaVantageKey = ref('');
 
+const ollamaStatus = ref('idle'); // idle, checking, connected, error
+const isCheckingOllama = ref(false);
+const ollamaModels = ref([]);
+const ollamaCtx = ref(4096);
+// Fixed gears for context length
+const ollamaCtxOptions = [4096, 8192, 16384, 32768, 65536, 131072, 262144];
+const ollamaCtxIndex = ref(0);
+
+const updateOllamaCtxFromIndex = () => {
+    ollamaCtx.value = ollamaCtxOptions[ollamaCtxIndex.value];
+};
+
+const ollamaModelInput = ref('');
+
+const formatContextLength = (val) => {
+    if (val >= 1024) return `${Math.round(val / 1024)}k`;
+    return val;
+};
+
+const handleOllamaAction = (action) => {
+    console.log(`[Ollama UI] Request to ${action} model: ${ollamaModelInput.value}`);
+    // Backend integration to follow
+    alert(`Ollama ${action} command for '${ollamaModelInput.value}' initiated. (Backend logic pending)`);
+};
+
+const checkOllamaConnection = async () => {
+    isCheckingOllama.value = true;
+    ollamaStatus.value = 'checking';
+    ollamaModels.value = [];
+    
+    // Normalize URL: remove /v1 suffix to get base for /api/tags checks if needed, 
+    // but standard OpenAI compatible endpoint is /v1/models
+    try {
+        const cleanUrl = ollamaUrl.value.replace(/\/v1\/?$/, '');
+        let response = null;
+        
+        // Try /v1/models (OpenAI standard)
+        try {
+           response = await fetch(`${cleanUrl}/v1/models`);
+        } catch (e) {
+           // Fallback to /api/tags (Ollama native)
+           response = await fetch(`${cleanUrl}/api/tags`);
+        }
+
+        if (response && response.ok) {
+            const data = await response.json();
+            // Handle both formats
+            if (data.data) {
+                // OpenAI format
+                ollamaModels.value = data.data.map(m => m.id);
+            } else if (data.models) {
+                // Ollama format
+                ollamaModels.value = data.models.map(m => m.name);
+            }
+            ollamaStatus.value = 'connected';
+        } else {
+            throw new Error('Invalid response');
+        }
+    } catch (err) {
+        console.error('Ollama connection failed:', err);
+        ollamaStatus.value = 'error';
+    } finally {
+        isCheckingOllama.value = false;
+    }
+};
+
+const saved = ref(false); // 'en' or 'zh'
+
 const language = ref('en'); // 'en' or 'zh'
 
 onMounted(() => {
@@ -29,6 +97,10 @@ onMounted(() => {
   ollamaUrl.value = localStorage.getItem('TA_OLLAMA_URL') || 'http://localhost:11434/v1';
   alphaVantageKey.value = localStorage.getItem('TA_ALPHA_VANTAGE_API_KEY') || '';
   language.value = localStorage.getItem('TA_LANGUAGE') || 'en';
+  ollamaCtx.value = Number(localStorage.getItem('TA_OLLAMA_CTX')) || 4096;
+  // Sync index
+  const foundIndex = ollamaCtxOptions.indexOf(ollamaCtx.value);
+  ollamaCtxIndex.value = foundIndex !== -1 ? foundIndex : 0;
 });
 
 const saveSettings = () => {
@@ -41,6 +113,7 @@ const saveSettings = () => {
   localStorage.setItem('TA_OLLAMA_URL', ollamaUrl.value);
   localStorage.setItem('TA_ALPHA_VANTAGE_API_KEY', alphaVantageKey.value);
   localStorage.setItem('TA_LANGUAGE', language.value);
+  localStorage.setItem('TA_OLLAMA_CTX', ollamaCtx.value);
   
   saved.value = true;
   setTimeout(() => {
@@ -148,10 +221,84 @@ const saveSettings = () => {
 
                 <!-- Local / Ollama -->
                 <div class="mt-6">
-                     <label class="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-2">
-                        <Server class="w-4 h-4" /> Local LLM (Ollama) URL
-                     </label>
-                     <input v-model="ollamaUrl" type="text" placeholder="http://localhost:11434/v1" class="input-field font-mono text-gray-600" />
+                     <div class="flex items-center justify-between mb-1">
+                        <label class="block text-sm font-medium text-gray-700 flex items-center gap-2">
+                            <Server class="w-4 h-4" /> Local LLM (Ollama) URL
+                        </label>
+                        <span v-if="ollamaStatus === 'connected'" class="text-xs font-medium text-emerald-600 flex items-center gap-1">
+                            <span class="w-2 h-2 rounded-full bg-emerald-500"></span> Connected
+                        </span>
+                        <span v-else-if="ollamaStatus === 'error'" class="text-xs font-medium text-red-500 flex items-center gap-1">
+                            <span class="w-2 h-2 rounded-full bg-red-500"></span> Connection Failed
+                        </span>
+                     </div>
+                     <div class="flex gap-2">
+                        <input v-model="ollamaUrl" type="text" placeholder="http://localhost:11434/v1" class="input-field font-mono text-gray-600 flex-1" />
+                        <button type="button" @click="checkOllamaConnection" :disabled="isCheckingOllama" class="px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-xl transition text-sm flex items-center gap-2 whitespace-nowrap">
+                            <span v-if="isCheckingOllama" class="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></span>
+                            <span v-else>Check</span>
+                        </button>
+                     </div>
+                     <p v-if="ollamaModels.length > 0" class="mt-2 text-xs text-gray-500">
+                        Available Models: <span class="font-mono text-emerald-600">{{ ollamaModels.slice(0, 3).join(', ') }}{{ ollamaModels.length > 3 ? ` +${ollamaModels.length - 3} more` : '' }}</span>
+                     </p>
+
+                     <!-- Context Length Slider -->
+                     <div class="mt-4 pt-4 border-t border-gray-100">
+                        <div class="flex items-center justify-between mb-2">
+                            <label class="text-sm font-medium text-gray-700 flex items-center gap-2">
+                                <Settings class="w-4 h-4" /> Context Length
+                            </label>
+                            <span class="text-xs font-mono font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded">{{ formatContextLength(ollamaCtx) }}</span>
+                        </div>
+                        <p class="text-xs text-gray-400 mb-3">Determines how much conversation history local LLMs can remember available RAM.</p>
+                        
+                        <!-- Fixed Gear Slider: Mapped to indices 0-6 -->
+                        <div class="relative w-full h-6 flex items-center select-none mt-2">
+                            <!-- Steps Markers (Visual) -->
+                            <div class="absolute w-full flex justify-between px-1 pointer-events-none z-0">
+                                <span v-for="step in 7" :key="step" class="w-1 h-1 bg-gray-300 rounded-full"></span>
+                            </div>
+
+                            <input 
+                                type="range" 
+                                v-model.number="ollamaCtxIndex" 
+                                min="0" 
+                                max="6" 
+                                step="1"
+                                class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-emerald-600 z-10 relative"
+                                @input="updateOllamaCtxFromIndex"
+                            />
+                        </div>
+                        <div class="flex justify-between text-[10px] text-gray-400 mt-1 font-mono">
+                            <span>4k</span>
+                            <span>8k</span>
+                            <span>16k</span>
+                            <span>32k</span>
+                            <span>64k</span>
+                            <span>128k</span>
+                            <span>256k</span>
+                        </div>
+                     </div>
+
+                     <!-- Model Management (Frontend Prototype) -->
+                     <div class="mt-4 pt-4 border-t border-gray-100">
+                        <h5 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Model Management</h5>
+                        <div class="flex gap-2">
+                            <input v-model="ollamaModelInput" type="text" placeholder="e.g. llama3" class="input-field font-mono text-gray-600 flex-1" />
+                            <div class="flex gap-1">
+                                <button type="button" @click="handleOllamaAction('pull')" class="px-3 py-2 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-lg text-xs font-bold transition">
+                                    Pull
+                                </button>
+                                <button type="button" @click="handleOllamaAction('run')" class="px-3 py-2 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 rounded-lg text-xs font-bold transition">
+                                    Run
+                                </button>
+                            </div>
+                        </div>
+                        <p class="text-[10px] text-gray-400 mt-2">
+                            * Management commands will be processed by the backend (Integration pending).
+                        </p>
+                     </div>
                 </div>
             </div>
 

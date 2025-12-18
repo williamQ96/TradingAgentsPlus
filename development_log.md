@@ -55,3 +55,28 @@
     - **Settings**: Added an "Interface Language" option (English/Chinese) to the Settings Modal, persisted via LocalStorage (UI only, translations pending).
     - **Documentation**: Updated `README.md` to highlight the new Vue.js GUI, Ollama support, and Multi-API features. Created `howto.md` with clear installation and startup instructions. Added `instruction.md` for user communication.
     - **Rebranding**: Renamed original documentation to `README_original.md` and established a new "TradingAgent Plus" `README.md` as the primary entry point, focusing on the enhanced features.
+
+## v0.4.0 - Rebranding & Polish
+- **Web Title & Icon**:
+    - Updated browser tab title to "TradingAgent Plus".
+    - Replaced default Vite favicon with custom "TA+" logo (Green/White).
+- **Versioning**: Bumped application version to v0.4.0 to reflect the major GUI and Feature upgrades.
+
+## v0.5.0 - Functional Update: Ollama Integration
+- **Ollama Integration**:
+    - Analyzed Ollama directory structure.
+    - Added a "Check Connection" button to the Settings Modal.
+    - Implemented frontend status verification (`/v1/models` or `/api/tags`) to confirm local AI availability and list models.
+    - Updated version to v0.5.0 (Functional Update).
+
+## v0.6.0 - Functional Update: Ollama Management UI
+- **Ollama Controls**:
+    - Added **Context Length Slider** to Settings (Configurable from 4k to 256k, persisted in local storage).
+    - Added **Model Management UI**: Input field with "Pull" and "Run" buttons for easy model management (Frontend implementation only; backend hooks pending).
+    - Updated version to v0.6.0.
+
+## v0.6.1 - UI Refinement: Stepped Context Slider
+- **UI Update**:
+    - Changed "Context Length" slider to use fixed steps: 4k, 8k, 16k, 32k, 64k, 128k, 256k.
+    - Improved slider visual feedback with markers.
+    - Updated version to v0.6.1.
