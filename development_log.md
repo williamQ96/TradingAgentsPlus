@@ -49,3 +49,7 @@
     - **Risk Judge Fix**: Added specific logic to catch the `Judge` speaker and extract the `judge_decision` field, resolving the "I don't know what this means" error.
     - **Clean Feed Output**: Modified the Feed component to suppress the display of raw text if a "View Report" button is available, decluttering the interface effectively.
     - **Smart Spinner Logic**: Refactored the card display to be mutually exclusive: a card shows *either* the Report Button, *or* text content, *or* the "Processing" spinner. This prevents the confused UI state where a completed report button sat next to a processing spinner.
+    - **Environment Restoration**: Fixed a missing `vite` binary issue by reinstalling frontend dependencies.
+    - **Logic Correction**: Added missing `get_insider_sentiment` and `get_insider_transactions` tools to `news_analyst.py`, matching the functionality described in `strategys.md`.
+    - **Logo Alignment**: Refined the CSS for the "TA+" logo to ensure perfect centering.
+    - **Settings**: Added an "Interface Language" option (English/Chinese) to the Settings Modal, persisted via LocalStorage (UI only, translations pending).

@@ -17,7 +17,7 @@ const qwenKey = ref('');
 const ollamaUrl = ref('http://localhost:11434/v1');
 const alphaVantageKey = ref('');
 
-const saved = ref(false);
+const language = ref('en'); // 'en' or 'zh'
 
 onMounted(() => {
   openaiKey.value = localStorage.getItem('TA_OPENAI_API_KEY') || '';
@@ -28,6 +28,7 @@ onMounted(() => {
   qwenKey.value = localStorage.getItem('TA_QWEN_API_KEY') || '';
   ollamaUrl.value = localStorage.getItem('TA_OLLAMA_URL') || 'http://localhost:11434/v1';
   alphaVantageKey.value = localStorage.getItem('TA_ALPHA_VANTAGE_API_KEY') || '';
+  language.value = localStorage.getItem('TA_LANGUAGE') || 'en';
 });
 
 const saveSettings = () => {
@@ -39,6 +40,7 @@ const saveSettings = () => {
   localStorage.setItem('TA_QWEN_API_KEY', qwenKey.value);
   localStorage.setItem('TA_OLLAMA_URL', ollamaUrl.value);
   localStorage.setItem('TA_ALPHA_VANTAGE_API_KEY', alphaVantageKey.value);
+  localStorage.setItem('TA_LANGUAGE', language.value);
   
   saved.value = true;
   setTimeout(() => {
@@ -77,6 +79,18 @@ const saveSettings = () => {
         <div class="flex-1 overflow-y-auto p-6 custom-scrollbar">
             <form @submit.prevent="saveSettings" class="space-y-8">
             
+            <!-- General Settings -->
+            <div>
+                <h4 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4 border-b border-gray-100 pb-2">General Settings</h4>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Interface Language</label>
+                    <select v-model="language" class="input-field">
+                        <option value="en">English</option>
+                        <option value="zh">Chinese (Simplified)</option>
+                    </select>
+                </div>
+            </div>
+
             <!-- Data Vendors -->
             <div>
                 <h4 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4 border-b border-gray-100 pb-2">Data Venders (Required)</h4>
