@@ -54,3 +54,4 @@
     - **Logo Alignment**: Refined the CSS for the "TA+" logo to ensure perfect centering.
     - **Settings**: Added an "Interface Language" option (English/Chinese) to the Settings Modal, persisted via LocalStorage (UI only, translations pending).
     - **Documentation**: Updated `README.md` to highlight the new Vue.js GUI, Ollama support, and Multi-API features. Created `howto.md` with clear installation and startup instructions. Added `instruction.md` for user communication.
+    - **Rebranding**: Renamed original documentation to `README_original.md` and established a new "TradingAgent Plus" `README.md` as the primary entry point, focusing on the enhanced features.
