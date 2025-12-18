@@ -45,7 +45,16 @@
 
 🚀 [TradingAgents](#tradingagents-framework) | ⚡ [Installation & CLI](#installation-and-cli) | 🎬 [Demo](https://www.youtube.com/watch?v=90gr5lwjIho) | 📦 [Package Usage](#tradingagents-package) | 🤝 [Contributing](#contributing) | 📄 [Citation](#citation)
 
+🚀 [TradingAgents](#tradingagents-framework) | ⚡ [Installation & CLI](#installation-and-cli) | 🎬 [Demo](https://www.youtube.com/watch?v=90gr5lwjIho) | 📦 [Package Usage](#tradingagents-package) | 🤝 [Contributing](#contributing) | 📄 [Citation](#citation)
+
 </div>
+
+> [!NOTE]
+> **Upgraded Version**: This project is an upgraded version of the original open-source project.
+> **Key Enhancements**:
+> 1. **Vue.js GUI**: Added a modern frontend interface for easier interaction and visualization.
+> 2. **Local AI Support**: integrated local Ollama server support for privacy-focused / cost-effective operations.
+> 3. **Multi-API Architecture**: Enhanced backend to support multiple LLM providers and data sources seamlessly.
 
 ## TradingAgents Framework
 

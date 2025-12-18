@@ -53,3 +53,4 @@
     - **Logic Correction**: Added missing `get_insider_sentiment` and `get_insider_transactions` tools to `news_analyst.py`, matching the functionality described in `strategys.md`.
     - **Logo Alignment**: Refined the CSS for the "TA+" logo to ensure perfect centering.
     - **Settings**: Added an "Interface Language" option (English/Chinese) to the Settings Modal, persisted via LocalStorage (UI only, translations pending).
+    - **Documentation**: Updated `README.md` to highlight the new Vue.js GUI, Ollama support, and Multi-API features. Created `howto.md` with clear installation and startup instructions. Added `instruction.md` for user communication.
