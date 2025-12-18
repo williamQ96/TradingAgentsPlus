@@ -1,5 +1,12 @@
-import chromadb
-from chromadb.config import Settings
+import warnings
+
+try:
+    import chromadb
+    from chromadb.config import Settings
+except ImportError:
+    chromadb = None
+    Settings = None
+
 from openai import OpenAI
 
 
@@ -10,8 +17,14 @@ class FinancialSituationMemory:
         else:
             self.embedding = "text-embedding-3-small"
         self.client = OpenAI(base_url=config["backend_url"])
-        self.chroma_client = chromadb.Client(Settings(allow_reset=True))
-        self.situation_collection = self.chroma_client.create_collection(name=name)
+        
+        if chromadb:
+            self.chroma_client = chromadb.Client(Settings(allow_reset=True))
+            self.situation_collection = self.chroma_client.create_collection(name=name)
+        else:
+            self.chroma_client = None
+            self.situation_collection = None
+            warnings.warn("ChromaDB not installed. Memory features will be disabled.")
 
     def get_embedding(self, text):
         """Get OpenAI embedding for a text"""
@@ -46,6 +59,9 @@ class FinancialSituationMemory:
 
     def get_memories(self, current_situation, n_matches=1):
         """Find matching recommendations using OpenAI embeddings"""
+        if self.situation_collection is None:
+            return []
+
         query_embedding = self.get_embedding(current_situation)
 
         results = self.situation_collection.query(

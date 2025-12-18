@@ -188,9 +188,82 @@ class TradingAgentsGraph:
 
         # Log state
         self._log_state(trade_date, final_state)
+        
+        # Save human-readable report
+        self._save_markdown_report(trade_date, final_state)
 
         # Return decision and processed signal
         return final_state, self.process_signal(final_state["final_trade_decision"])
+
+    def save_markdown_report(self, trade_date, final_state):
+        """Save a human-readable Markdown report of the analysis."""
+        output_dir = Path("analysis_results")
+        output_dir.mkdir(exist_ok=True)
+        
+        # Determine filename flags based on active reports
+        analyst_map = {
+            "market_report": "Market",
+            "sentiment_report": "Social",
+            "news_report": "News",
+            "fundamentals_report": "Fundamentals"
+        }
+        
+        active_analysts = [name for key, name in analyst_map.items() if final_state.get(key)]
+        
+        if len(active_analysts) == 4:
+            flags = "_ALL"
+        elif active_analysts:
+            flags = "_" + "_".join(active_analysts)
+        else:
+            flags = ""
+
+        filename = output_dir / f"{self.ticker}_{trade_date}_Report{flags}.md"
+        
+        report = f"# Investment Analysis Report: {self.ticker}\n"
+        report += f"**Date:** {trade_date}\n\n"
+        
+        report += "---\n\n"
+        
+        # 1. Executive Summary / Final Decision
+        report += "## 1. Final Trade Decision\n"
+        report += f"{final_state.get('final_trade_decision', 'No decision made.')}\n\n"
+        
+        # 2. Investment Strategy
+        report += "## 2. Trader's Investment Plan\n"
+        report += f"{final_state.get('trader_investment_plan', 'No plan generated.')}\n\n"
+        
+        # 3. Risk Assessment
+        report += "## 3. Risk Management Analysis\n"
+        risk_judge = final_state.get('risk_debate_state', {}).get('judge_decision', '')
+        report += f"**Risk Veridict:**\n{risk_judge}\n\n"
+        
+        # 4. Detailed Analyst Reports
+        report += "---\n\n"
+        report += "## 4. Analyst Reports\n\n"
+        
+        if final_state.get('market_report'):
+            report += "### Market Analyst\n"
+            report += f"{final_state['market_report']}\n\n"
+            
+        if final_state.get('news_report'):
+            report += "### News Analyst\n"
+            report += f"{final_state['news_report']}\n\n"
+            
+        if final_state.get('fundamentals_report'):
+            report += "### Fundamentals Analyst\n"
+            report += f"{final_state['fundamentals_report']}\n\n"
+            
+        if final_state.get('sentiment_report'):
+            report += "### Social Sentiment Analyst\n"
+            report += f"{final_state['sentiment_report']}\n\n"
+            
+        # Write to file
+        try:
+            with open(filename, "w", encoding="utf-8") as f:
+                f.write(report)
+            print(f"DEBUG: Saved analysis report to {filename}")
+        except Exception as e:
+            print(f"ERROR: Failed to save markdown report: {e}")
 
     def _log_state(self, trade_date, final_state):
         """Log the final state to a JSON file."""

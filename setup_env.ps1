@@ -1,5 +1,5 @@
 param(
-  [string]$VenvDir = '.venv',
+  [string]$VenvDir = 'tradingagents-venv',
   [string]$Req = 'requirements.txt',
   [string]$ReqDev = 'requirements-dev.txt',
   [switch]$Dev,

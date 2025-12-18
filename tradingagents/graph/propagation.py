@@ -44,6 +44,6 @@ class Propagator:
     def get_graph_args(self) -> Dict[str, Any]:
         """Get arguments for the graph invocation."""
         return {
-            "stream_mode": "values",
+            "stream_mode": "updates",
             "config": {"recursion_limit": self.max_recur_limit},
         }
