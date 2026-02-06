@@ -94,7 +94,7 @@ const handleStart = async (config) => {
                  <div class="w-8 h-8 bg-emerald-600 rounded-lg flex items-center justify-center text-white font-bold shadow-emerald-200 shadow-lg text-xs leading-none">TA+</div>
                  <div>
                     <h1 class="font-extrabold text-lg tracking-tight text-gray-900 leading-tight">TradingAgent Plus</h1>
-                    <div class="text-[10px] font-medium text-gray-400 uppercase tracking-widest">v0.6.1</div>
+                    <div class="text-[10px] font-medium text-gray-400 uppercase tracking-widest">v0.11.1</div>
                  </div>
              </div>
              

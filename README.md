@@ -1,8 +1,8 @@
-# TradingAgent Plus (TA+)
+# TradingAgents Plus (TA+)
 
 > **An enhanced, interactive GUI version of the [TradingAgents](https://github.com/TauricResearch/TradingAgents) framework.**
 
-TradingAgent Plus transforms the powerful multi-agent financial framework into a modern, user-friendly desktop application. It adds a real-time visualization layer, local AI support, and a flexible configuration system.
+TradingAgents Plus transforms the powerful multi-agent financial framework into a modern, user-friendly desktop application. It adds a real-time visualization layer, local AI support, and a flexible configuration system.
 
 ![TA+ Interface](assets/ta_plus_preview.png)
 

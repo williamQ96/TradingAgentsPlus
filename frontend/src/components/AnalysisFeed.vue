@@ -48,6 +48,8 @@ const getAgentIcon = (name) => {
     if (n.includes('social')) return Users;
     if (n.includes('news')) return Newspaper;
     if (n.includes('fundamental')) return FileText;
+    if (n.includes('fundamental')) return FileText;
+    if (n.includes('final report')) return FileText;
     return Search;
 };
 
@@ -78,40 +80,58 @@ const handleReportClick = (event) => {
       <div 
         v-for="(event, index) in events" 
         :key="event.nodeName"
-        class="border border-gray-100 rounded-lg bg-white overflow-hidden transition-all duration-200"
+        class="border rounded-lg overflow-hidden transition-all duration-200"
         :class="[
-            selectedNodeId === event.nodeName ? 'ring-2 ring-emerald-500 shadow-md' : 'shadow-sm hover:shadow-md'
+            selectedNodeId === event.nodeName ? 'ring-2 ring-emerald-500 shadow-md' : 'shadow-sm hover:shadow-md',
+            event.nodeName === 'Final Report' ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-100'
         ]"
       >
         <!-- Header: Always Visible -->
-        <div @click="toggleExpand(event.nodeName)" class="flex items-center justify-between p-3 bg-gray-50/50 cursor-pointer hover:bg-gray-100 transition-colors">
+        <div @click="toggleExpand(event.nodeName)" 
+             class="flex items-center justify-between p-3 cursor-pointer transition-colors"
+             :class="event.nodeName === 'Final Report' ? 'bg-gray-900 text-white hover:bg-gray-800' : 'bg-gray-50/50 hover:bg-gray-100'"
+        >
            <div class="flex items-center gap-3">
-               <div class="p-1.5 bg-white rounded-md border border-gray-200 shadow-sm text-emerald-600">
+               <div class="p-1.5 rounded-md border shadow-sm"
+                    :class="event.nodeName === 'Final Report' ? 'bg-gray-800 border-gray-700 text-emerald-400' : 'bg-white border-gray-200 text-emerald-600'"
+               >
                    <component :is="getAgentIcon(event.nodeName)" class="w-4 h-4" />
                </div>
                <div>
-                   <div class="font-bold text-gray-700 font-mono text-xs uppercase tracking-tight">{{ formatNodeName(event.nodeName) }}</div>
-                   <div class="text-[10px] text-gray-400 font-medium">{{ formatTime(event.timestamp) }}</div>
+                   <div class="font-bold font-mono text-xs uppercase tracking-tight"
+                        :class="event.nodeName === 'Final Report' ? 'text-emerald-400' : 'text-gray-700'"
+                   >{{ formatNodeName(event.nodeName) }}</div>
+                   <div class="text-[10px] font-medium"
+                        :class="event.nodeName === 'Final Report' ? 'text-gray-400' : 'text-gray-400'"
+                   >{{ formatTime(event.timestamp) }}</div>
                </div>
            </div>
            
-           <button class="text-gray-400 hover:text-gray-600">
+           <button :class="event.nodeName === 'Final Report' ? 'text-gray-400 hover:text-white' : 'text-gray-400 hover:text-gray-600'">
                <ChevronUp v-if="expandedNodes.has(event.nodeName)" class="w-4 h-4" />
                <ChevronDown v-else class="w-4 h-4" />
            </button>
         </div>
         
         <!-- Body: Collapsible -->
-        <div v-if="expandedNodes.has(event.nodeName)" class="p-3 border-t border-gray-100 bg-white animate-in slide-in-from-top-2 duration-200">
-           <div class="text-gray-800 leading-relaxed text-xs">
+        <div v-if="expandedNodes.has(event.nodeName)" 
+             class="p-3 border-t animate-in slide-in-from-top-2 duration-200"
+             :class="event.nodeName === 'Final Report' ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-100'"
+        >
+           <div class="leading-relaxed text-xs"
+                :class="event.nodeName === 'Final Report' ? 'text-gray-300' : 'text-gray-800'"
+           >
                <!-- Content Present -->
                <template v-if="event.displayContent">
                    <button 
                       v-if="event.type === 'report'" 
                       @click.stop="handleReportClick(event)"
-                      class="w-full mb-2 flex items-center justify-center gap-2 py-1.5 px-3 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-semibold rounded-md border border-emerald-200 transition-colors text-xs"
+                      class="w-full mb-2 flex items-center justify-center gap-2 py-1.5 px-3 font-semibold rounded-md border transition-colors text-xs"
+                      :class="event.nodeName === 'Final Report' 
+                        ? 'bg-emerald-900/50 text-emerald-400 border-emerald-800 hover:bg-emerald-900' 
+                        : 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'"
                    >
-                       <FileText class="w-3.5 h-3.5" /> View Generated Report
+                       <FileText class="w-3.5 h-3.5" /> {{ event.nodeName === 'Final Report' ? 'View Comprehensive Analysis' : 'View Generated Report' }}
                    </button>
                    
                    <div v-else class="whitespace-pre-wrap font-mono bg-gray-50 p-2 rounded border border-gray-100 text-gray-600">

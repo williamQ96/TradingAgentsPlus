@@ -66,6 +66,147 @@ async def get_config():
         }
     }
 
+class OllamaRequest(BaseModel):
+    action: str # "pull" or "run"
+    model: str
+    ollama_url: str = "http://localhost:11434"
+
+import requests
+import threading
+from fastapi import BackgroundTasks
+
+# Track active pulls: model_name -> threading.Event (if set, cancel)
+# Track active pulls: model_name -> threading.Event (if set, cancel)
+pull_cancellations = {}
+# Track pull status: model_name -> {"status": "pulling"|"success"|"error"|"cancelled", "message": "..."}
+pull_states = {}
+
+def perform_ollama_pull(url: str, model: str):
+    """Background task to pull model via Ollama API."""
+    cancel_event = threading.Event()
+    pull_cancellations[model] = cancel_event
+    pull_states[model] = {"status": "pulling", "message": "Starting pull..."}
+    
+    try:
+        print(f"INFO: Starting background pull for {model} at {url}")
+        # Streaming pull to avoid timeout
+        with requests.post(f"{url}/api/pull", json={"name": model}, stream=True) as r:
+            for line in r.iter_lines():
+                if cancel_event.is_set():
+                    print(f"WARN: Pull for {model} was cancelled by user.")
+                    pull_states[model] = {"status": "cancelled", "message": "Pull cancelled by user."}
+                    return
+                
+                if line:
+                    decoded = line.decode('utf-8')
+                    try:
+                        data = json.loads(decoded)
+                        if "status" in data:
+                             msg = f"Pulling: {data['status']}"
+                             if "completed" in data and "total" in data:
+                                 msg += f" {data['completed']}/{data['total']}"
+                             pull_states[model] = {"status": "pulling", "message": msg}
+                    except:
+                        pass # Ignore parse errors
+                    print(f"OLLAMA PULL {model}: {decoded}")
+        
+        print(f"INFO: Finished pulling {model}")
+        pull_states[model] = {"status": "success", "message": "Model pulled successfully."}
+        
+    except Exception as e:
+        print(f"ERROR: Failed to pull {model}: {e}")
+        pull_states[model] = {"status": "error", "message": str(e)}
+    finally:
+        # Cleanup cancellation event but keep status for a bit so frontend sees it?
+        # Actually frontend polls status. We should iterate status expiry or just leave it until restart.
+        # For now, simplistic approach: leave it.
+        if model in pull_cancellations:
+            del pull_cancellations[model]
+
+@app.post("/api/ollama/cancel")
+async def cancel_ollama_pull(request: OllamaRequest):
+    """Cancel an active pull job."""
+    if request.model in pull_cancellations:
+        pull_cancellations[request.model].set()
+        return {"status": "cancelled", "message": f"Cancellation requested for {request.model}"}
+    return {"status": "not_found", "message": "No active pull found for this model"}
+
+@app.get("/api/ollama/status/{model}")
+async def get_ollama_status(model: str):
+    """Get the status of a specific model pull operation."""
+    if model in pull_states:
+        return pull_states[model]
+    else:
+        # If not in our state tracker, check if it exists in Ollama (maybe pulled before?)
+        # Or just return 'idle'
+        return {"status": "idle", "message": "No active operation."}
+
+@app.post("/api/ollama/manage")
+async def manage_ollama(request: OllamaRequest, background_tasks: BackgroundTasks):
+    """Handle Ollama management commands (pull/run)."""
+    
+    # Clean URL
+    base_url = request.ollama_url.rstrip("/")
+    if base_url.endswith("/v1"):
+        base_url = base_url[:-3] # Remove /v1 for native API calls
+        
+    if request.action == "pull":
+        if request.model in pull_cancellations:
+             return {"status": "active", "message": f"Model {request.model} is already being pulled."}
+             
+        # Run pull in background as it can take a long time
+        background_tasks.add_task(perform_ollama_pull, base_url, request.model)
+        return {"status": "started", "message": f"Pulling model {request.model} in background..."}
+        
+    elif request.action == "run":
+        # Robust 'Run' logic:
+        # 1. Check if running
+        # 2. If not, load it
+        try:
+            # Check /api/ps to see if model is loaded
+            ps_response = requests.get(f"{base_url}/api/ps")
+            if ps_response.status_code == 200:
+                running_models = ps_response.json().get("models", [])
+                # Check if our model matches any running model name
+                # Ollama names can simplify differently (e.g. library/tag), usually matches request
+                is_running = any(m.get("name") == request.model or m.get("model") == request.model for m in running_models)
+                
+                if is_running:
+                     return {"status": "success", "message": f"Model '{request.model}' is already running."}
+            
+            # Not running, try to load it
+            # We use a 0-token generation request to force-load the model
+            load_response = requests.post(
+                f"{base_url}/api/generate", 
+                json={"model": request.model, "prompt": "", "keep_alive": "5m"},
+                timeout=10 # Short timeout for connection, but wait for load? Loading can take time.
+                # If loading takes > 10s, this might timeout. But usually we want to wait or background it.
+                # User asked to "display notification when it is done". So we should await it here.
+                # We'll increase timeout slightly. Large models might take 30s.
+            )
+            
+            if load_response.status_code == 200:
+                 return {"status": "success", "message": f"Model '{request.model}' loaded successfully."}
+            else:
+                 # Try to extract error
+                 try:
+                     err_data = load_response.json()
+                     err_msg = err_data.get("error", "Unknown error")
+                 except:
+                     err_msg = load_response.text
+                 
+                 raise Exception(f"Ollama API returned {load_response.status_code}: {err_msg}")
+
+        except requests.exceptions.ConnectionError:
+             return {"status": "error", "message": f"Failed to connect to Ollama at {base_url}. Is it running?"}
+        except Exception as e:
+            # Catch timeouts, etc
+            print(f"ERROR: Run model failed: {e}")
+            raise HTTPException(status_code=500, detail=f"Failed to run model: {str(e)}")
+            
+    else:
+        raise HTTPException(status_code=400, detail="Invalid action")
+
 @app.post("/api/analyze")
 async def analyze(request: AnalysisRequest):
     """Start an analysis job and stream results."""
@@ -299,7 +440,27 @@ async def analyze(request: AnalysisRequest):
             # 4. Final Wrap up
             # Save the markdown report to disk
             try:
-                graph.save_markdown_report(request.analysis_date, full_state)
+                report_path = graph.save_markdown_report(request.analysis_date, full_state)
+                print(f"INFO: Saved report to {report_path}")
+                
+                 # Yield Final Report Event
+                try:
+                    with open(report_path, 'r', encoding='utf-8') as f:
+                        final_report_content = f.read()
+                        
+                    yield {
+                        "event": "agent_update",
+                        "data": json.dumps({
+                            "node": "Final Report",
+                            "timestamp": datetime.now().isoformat(),
+                            "type": "report",
+                            "section_content": final_report_content,
+                            "section_update": "Comprehensive Analysis Report"
+                        })
+                    }
+                except Exception as read_err:
+                     print(f"ERROR: Could not read final report for streaming: {read_err}")
+                
             except Exception as e:
                 print(f"ERROR: Could not save report from main.py: {e}")
 

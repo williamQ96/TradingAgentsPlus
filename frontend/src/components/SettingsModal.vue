@@ -1,6 +1,6 @@
 <script setup>
 import { ref, onMounted } from 'vue';
-import { X, Save, Key, ShieldCheck, Server } from 'lucide-vue-next';
+import { X, Save, Key, ShieldCheck, Server, Settings, Check, Loader2 } from 'lucide-vue-next';
 
 const props = defineProps({
   isOpen: Boolean
@@ -36,10 +36,133 @@ const formatContextLength = (val) => {
     return val;
 };
 
-const handleOllamaAction = (action) => {
-    console.log(`[Ollama UI] Request to ${action} model: ${ollamaModelInput.value}`);
-    // Backend integration to follow
-    alert(`Ollama ${action} command for '${ollamaModelInput.value}' initiated. (Backend logic pending)`);
+
+
+const notification = ref({
+    show: false,
+    title: '',
+    message: '',
+    type: 'info', // info, success, error
+    loading: false,
+    action: null, // 'pull' or 'run'
+    model: null
+});
+
+const closeNotification = () => {
+    notification.value.show = false;
+};
+
+const stopPull = async () => {
+    if (!notification.value.model) return;
+    
+    try {
+        await fetch('http://localhost:8000/api/ollama/cancel', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                action: 'cancel',
+                model: notification.value.model
+            })
+        });
+        notification.value.loading = false;
+        notification.value.type = 'error';
+        notification.value.title = 'Process Stopped';
+        notification.value.message = 'The model pulling process was cancelled by user.';
+    } catch (e) {
+        console.error("Stop error:", e);
+    }
+};
+
+const pollStatus = async (model) => {
+    const pollInterval = setInterval(async () => {
+        if (!notification.value.show || notification.value.model !== model) {
+            clearInterval(pollInterval);
+            return;
+        }
+
+        try {
+            const res = await fetch(`http://localhost:8000/api/ollama/status/${model}`);
+            if (res.ok) {
+                const statusData = await res.json();
+                
+                // Update message if still pulling
+                if (statusData.status === 'pulling') {
+                    notification.value.message = statusData.message;
+                } else if (statusData.status === 'success') {
+                    clearInterval(pollInterval);
+                    notification.value.loading = false;
+                    notification.value.type = 'success';
+                    notification.value.title = 'Success';
+                    notification.value.message = statusData.message;
+                } else if (statusData.status === 'error' || statusData.status === 'cancelled') {
+                    clearInterval(pollInterval);
+                    notification.value.loading = false;
+                    notification.value.type = 'error';
+                    notification.value.title = statusData.status === 'cancelled' ? 'Cancelled' : 'Error';
+                    notification.value.message = statusData.message;
+                }
+            }
+        } catch (e) {
+            console.error("Poll error:", e);
+        }
+    }, 1000);
+};
+
+const handleOllamaAction = async (action) => {
+    if (!ollamaModelInput.value) return;
+    
+    // Show loading notification
+    notification.value = {
+        show: true,
+        title: action === 'pull' ? 'Pulling Model...' : 'Loading Model...',
+        message: action === 'pull' 
+            ? `Downloading ${ollamaModelInput.value} in background...` 
+            : `Loading ${ollamaModelInput.value} into memory...`,
+        type: 'info',
+        loading: true,
+        action: action,
+        model: ollamaModelInput.value
+    };
+    
+    try {
+        const response = await fetch('http://localhost:8000/api/ollama/manage', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                action: action,
+                model: ollamaModelInput.value,
+                ollama_url: ollamaUrl.value
+            })
+        });
+        
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.detail || 'Request failed');
+        }
+        
+        // Handle "started" status for background jobs (pull) vs "success" for instant (run)
+        if (data.status === 'started') {
+             notification.value.message = data.message;
+             // Start Polling if it's a pull action
+             if (action === 'pull') {
+                 pollStatus(ollamaModelInput.value);
+             }
+        } else {
+             notification.value.loading = false;
+             notification.value.type = 'success';
+             notification.value.title = 'Success';
+             notification.value.message = data.message;
+        }
+        
+    } catch (e) {
+        notification.value.loading = false;
+        notification.value.type = 'error';
+        notification.value.title = 'Error';
+        notification.value.message = e.message;
+    }
 };
 
 const checkOllamaConnection = async () => {
@@ -295,8 +418,11 @@ const saveSettings = () => {
                                 </button>
                             </div>
                         </div>
-                        <p class="text-[10px] text-gray-400 mt-2">
-                            * Management commands will be processed by the backend (Integration pending).
+                        <p class="text-[10px] text-gray-400 mt-2 flex justify-between items-center">
+                            <span>* Management commands will be processed by the backend.</span>
+                            <a href="https://ollama.com/search" target="_blank" class="text-emerald-600 hover:text-emerald-700 hover:underline">
+                                Browse supported models on Ollama.com &rarr;
+                            </a>
                         </p>
                      </div>
                 </div>
@@ -305,8 +431,39 @@ const saveSettings = () => {
             </form>
         </div>
 
-        <!-- Footer -->
-        <div class="p-6 border-t border-gray-100 shrink-0 bg-gray-50/50 rounded-b-2xl">
+            <!-- Notification Overlay -->
+            <div v-if="notification.show" class="absolute inset-0 bg-white/90 backdrop-blur-sm z-50 flex items-center justify-center rounded-2xl">
+                <div class="text-center p-6 max-w-sm">
+                    <div v-if="notification.loading" class="mb-4 flex justify-center">
+                        <Loader2 class="w-10 h-10 text-emerald-600 animate-spin" />
+                    </div>
+                    <div v-else-if="notification.type === 'success'" class="mb-4 flex justify-center">
+                        <div class="w-10 h-10 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center">
+                            <Check class="w-6 h-6" />
+                        </div>
+                    </div>
+                     <div v-else-if="notification.type === 'error'" class="mb-4 flex justify-center">
+                        <div class="w-10 h-10 bg-red-100 text-red-600 rounded-full flex items-center justify-center">
+                            <X class="w-6 h-6" />
+                        </div>
+                    </div>
+
+                    <h3 class="text-lg font-bold text-gray-900 mb-2">{{ notification.title }}</h3>
+                    <p class="text-sm text-gray-600 mb-6 leading-relaxed">{{ notification.message }}</p>
+
+                    <div class="flex justify-center gap-3">
+                         <button v-if="notification.loading && notification.action === 'pull'" @click="stopPull" class="px-5 py-2.5 bg-red-100 hover:bg-red-200 active:bg-red-300 text-red-700 font-bold rounded-xl transition text-sm">
+                            Stop Process
+                        </button>
+                        <button v-if="!notification.loading" @click="closeNotification" class="px-5 py-2.5 bg-gray-900 active:bg-gray-800 text-white font-bold rounded-xl transition text-sm">
+                            Close
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <div class="p-6 border-t border-gray-100 shrink-0 bg-gray-50/50 rounded-b-2xl">
             <button @click="saveSettings" class="w-full flex items-center justify-center gap-2 bg-gray-900 hover:bg-gray-800 text-white font-semibold py-3.5 rounded-xl transition-all active:scale-[0.99] shadow-lg shadow-gray-200">
                <span v-if="saved" class="flex items-center gap-2 text-emerald-400">Settings Saved!</span>
                <span v-else class="flex items-center gap-2"><Save class="w-4 h-4" /> Save Configuration</span>

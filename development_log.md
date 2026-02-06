@@ -80,3 +80,67 @@
     - Changed "Context Length" slider to use fixed steps: 4k, 8k, 16k, 32k, 64k, 128k, 256k.
     - Improved slider visual feedback with markers.
     - Updated version to v0.6.1.
+
+## v0.7.0 - Functional Update: Ollama Backend Integration
+- **Backend**:
+    - Implemented `/api/ollama/manage` endpoint in `backend/main.py`.
+    - Supports `pull` action: Triggers background Model Pull from Ollama URL (logs progress to backend console).
+    - Supports `run` action: Triggers a lightweight Model Load (generate request) to ensure model is in memory.
+- **Frontend**:
+    - Connected "Pull" and "Run" buttons in Settings to the new backend API.
+    - Added error handling and success alerts for model management actions.
+    - Updated version to v0.7.0.
+
+## v0.8.0 - Functional Update: Ollama Notification & Control
+- **Backend Refinement**:
+    - Added background task cancellation support for model pulling.
+    - Implemented `/api/ollama/cancel` endpoint.
+- **Frontend Refinement**:
+    - **Notification Window**: Replaced standard alerts with a styled in-app processing window (Glassmorphism style).
+    - **Progress Feedback**: Added spinner animation for "Pulling" and "Loading" states.
+    - **Control**: Added **"Stop Process"** button to the notification window, allowing users to cancel a long-running model pull.
+    - Updated version to v0.8.0.
+
+## v0.8.1 - UI Update: Model Library Link
+- **UI Refinement**:
+    - Added a direct link to the **Ollama Model Library** (`ollama.com/search`) in the Model Management section to help users find compatible models.
+    - Updated version to v0.8.1.
+
+## v0.9.0 - Backend Logic Update: Robust Model Run
+- **Backend**:
+    - Enhanced `RUN` command logic.
+    - Added pre-check: now queries `/api/ps` to check if a model is already loaded before attempting to run.
+    - Improved error handling: catches connection errors and returns specific messages if Ollama is down or model load fails.
+    - Returns specific success messages ("already running" vs "loaded successfully").
+- **Versioning**:
+    - Major functional update to backend logic > bumped to v0.9.0.
+
+## v0.10.0 - Major Update: Real-time Pull Feedback
+- **Backend Refinement**:
+    - **Status Tracking**: Introduced active state tracking for Ollama model pulls (`pull_states`).
+    - **Endpoint**: Added `GET /api/ollama/status/{model}` to expose real-time progress.
+- **Frontend Refinement**:
+    - **Smart Polling**: The notification window now automatically polls the backend for progress updates.
+    - **Visual Feedback**:
+        - Shows **Green Checkmark** and auto-stops spinner on success.
+        - Shows **Red X** and specific error message on failure.
+        - Shows **Cancel status** if manually stopped.
+    - Resolves issue where spinner continued indefinitely after backend work finished.
+    - Updated version to v0.10.0.
+
+## v0.11.0 - UI Update: Final Report Visualization
+- **Backend**:
+    - Now streams a dedicated `Final Report` event after analysis generation is complete.
+    - Sends the full comprehensive report content to the frontend feed.
+- **Frontend (Analysis Feed)**:
+    - Added special styling for the **"Final Report"** card.
+    - Uses a **High-Contrast Dark Theme** (Stressed Color) to distinguish it from individual agent updates.
+    - Displays a "View Comprehensive Analysis" button that opens the full report in the right-hand viewer.
+    - Automatically highlights the final step of the process.
+    - Updated version to v0.11.0.
+
+## v0.11.1 - Hotfix: Final Report Generation
+- **Backend Fix**:
+    - Restored the missing `save_markdown_report` call which was causing a `NameError` and preventing the final report from being saved or streamed.
+    - Result: Final Report Card now correctly generates and displays at the end of the analysis.
+    - Updated version to v0.11.1.
